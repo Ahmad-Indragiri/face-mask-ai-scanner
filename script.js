@@ -84,10 +84,10 @@ async function predictImage(imgElement) {
 
         // Evaluasi
         if (pred[1] > pred[0]) {
-            status.innerText = `✅ MASKER TERDETEKSI (${(pred[0] * 100).toFixed(1)}%)`;
+            status.innerText = `✅ MASKER TERDETEKSI (${(pred[1] * 100).toFixed(1)}%)`;
             status.style.color = "green";
         } else {
-            status.innerText = `❌ TANPA MASKER (${(pred[1] * 100).toFixed(1)}%)`;
+            status.innerText = `❌ TANPA MASKER (${(pred[0] * 100).toFixed(1)}%)`;
             status.style.color = "red";
         }
     } catch (error) {
