@@ -56,6 +56,7 @@ function handleUpload(e) {
 
 // 4. Prediction Logic (Graph Model Specific)
 // 4. Prediction Logic (Graph Model Specific)
+// 4. Prediction Logic (Graph Model Specific)
 async function predictImage(imgElement) {
     status.innerText = "Analyzing...";
     
@@ -68,12 +69,12 @@ async function predictImage(imgElement) {
     });
     
     try {
-        // PERBAIKAN 1: Gunakan .predict() yang lebih stabil untuk model ini
         const predictionTensor = model.predict(tensor); 
         
-        // PERBAIKAN 2: Antisipasi jika Graph Model mereturn Array
         const tensorData = Array.isArray(predictionTensor) ? predictionTensor[0] : predictionTensor;
         const pred = await tensorData.data();
+
+        console.log(`[DEBUG AI] Kelas 0 (Tanpa Masker): ${pred[0].toFixed(4)} | Kelas 1 (Masker): ${pred[1].toFixed(4)}`);
         
         // Cleanup memori
         if (Array.isArray(predictionTensor)) {
@@ -82,7 +83,7 @@ async function predictImage(imgElement) {
             predictionTensor.dispose();
         }
 
-        // Evaluasi
+        // Evaluasi Final yang Benar
         if (pred[1] > pred[0]) {
             status.innerText = `✅ MASKER TERDETEKSI (${(pred[1] * 100).toFixed(1)}%)`;
             status.style.color = "green";
@@ -90,9 +91,9 @@ async function predictImage(imgElement) {
             status.innerText = `❌ TANPA MASKER (${(pred[0] * 100).toFixed(1)}%)`;
             status.style.color = "red";
         }
+
     } catch (error) {
         console.error("Prediction error:", error);
-        // PERBAIKAN 3: Cetak error langsung ke layar dan matikan kamera agar loop berhenti!
         status.innerText = "Error: " + error.message; 
         status.style.color = "red";
         video.style.display = 'none'; 
