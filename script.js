@@ -4,16 +4,18 @@ const status = document.getElementById('status');
 const video = document.getElementById('webcam');
 const preview = document.getElementById('preview');
 
-// 1. Initialize the AI Model
+// 1. Initialize the AI Graph Model
 async function initModel() {
     try {
-        status.innerText = "Loading AI Model...";
-        // Load the model from our local folder
-        model = await tf.loadLayersModel('./model/model.json');
+        status.innerText = "Loading AI Graph Model...";
+        
+        // MENGGUNAKAN loadGraphModel
+        model = await tf.loadGraphModel('./model/model.json'); 
+        
         status.innerText = "Model Ready. Select camera or upload a photo.";
     } catch (error) {
         console.error("Model loading error:", error);
-        status.innerText = "Failed to load model.";
+        status.innerText = "Failed to load model. Check console.";
     }
 }
 
@@ -52,26 +54,42 @@ function handleUpload(e) {
     reader.readAsDataURL(file);
 }
 
-// 4. Prediction Logic for Static Images
+// 4. Prediction Logic (Graph Model Specific)
 async function predictImage(imgElement) {
     status.innerText = "Analyzing...";
     
-    // Process image: resize, normalize, predict
+    // Preprocessing: Resize ke 224x224 dan normalisasi piksel ke [-1, 1]
     const tensor = tf.tidy(() => {
         return tf.browser.fromPixels(imgElement)
             .resizeBilinear([224, 224])
             .expandDims(0)
             .toFloat()
-            .div(127.5).sub(1);
+            .div(127.5).sub(1); 
     });
     
-    const pred = await model.predict(tensor).data();
-    tensor.dispose(); // Cleanup memory
+    try {
+        // PERUBAHAN KRUSIAL: Graph Model wajib menggunakan executeAsync
+        const predictionTensor = await model.executeAsync(tensor);
+        const pred = await predictionTensor.data();
+        
+        // Cleanup memori hasil prediksi agar RAM tidak bocor
+        predictionTensor.dispose();
 
-    // Probabilities: [0] = WithMask, [1] = WithoutMask
-    status.innerText = pred[0] > pred[1] 
-        ? "✅ MASKER TERDETEKSI" 
-        : "❌ TANPA MASKER";
+        // Evaluasi hasil (Asumsi index 0 = Dengan Masker, 1 = Tanpa Masker)
+        if (pred[0] > pred[1]) {
+            status.innerText = `✅ MASKER TERDETEKSI (${(pred[0] * 100).toFixed(1)}%)`;
+            status.style.color = "green";
+        } else {
+            status.innerText = `❌ TANPA MASKER (${(pred[1] * 100).toFixed(1)}%)`;
+            status.style.color = "red";
+        }
+    } catch (error) {
+        console.error("Prediction error:", error);
+        status.innerText = "Error analyzing image.";
+    } finally {
+        // Selalu bersihkan tensor input
+        tensor.dispose();
+    }
 }
 
 // 5. Prediction Loop for Video
@@ -82,5 +100,5 @@ async function predictVideo() {
     requestAnimationFrame(predictVideo);
 }
 
-// Initial Call
+// Eksekusi inisialisasi saat web pertama kali dibuka
 initModel();
