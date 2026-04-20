@@ -1,81 +1,86 @@
-// Define HTML Elements
-const video = document.getElementById('webcam');
-const statusText = document.getElementById('status');
-
-// Global variable to store the loaded model
+// Global variables
 let model;
+const status = document.getElementById('status');
+const video = document.getElementById('webcam');
+const preview = document.getElementById('preview');
 
-// Phase 1: Load the TF.js Model
+// 1. Initialize the AI Model
 async function initModel() {
     try {
-        // Load model.json from the local directory
+        status.innerText = "Loading AI Model...";
+        // Load the model from our local folder
         model = await tf.loadLayersModel('./model/model.json');
-        statusText.innerText = "Model Loaded! Starting camera...";
-        startWebcam();
+        status.innerText = "Model Ready. Select camera or upload a photo.";
     } catch (error) {
-        console.error("Model load error:", error);
-        statusText.innerText = "Error: Check Console.";
+        console.error("Model loading error:", error);
+        status.innerText = "Failed to load model.";
     }
 }
 
-// Phase 2: Start the Webcam
-async function startWebcam() {
+// 2. Webcam Mode
+async function useWebcam() {
+    preview.style.display = 'none';
+    video.style.display = 'block';
+    
     try {
-        // Request video stream from user's camera
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
         
-        // Wait until the video is actively playing before starting predictions
-        video.addEventListener('playing', () => {
-            statusText.innerText = "Analyzing...";
-            predictLoop(); // Start the AI loop
-        });
+        // Start prediction loop after video is active
+        video.onloadedmetadata = () => {
+            predictVideo();
+        };
     } catch (error) {
         console.error("Camera error:", error);
-        statusText.innerText = "Camera Access Denied.";
+        status.innerText = "Camera access denied.";
     }
 }
 
-// Phase 3: Real-time Prediction Loop
-async function predictLoop() {
-    // tf.tidy cleans up GPU memory automatically after each frame
-    const prediction = tf.tidy(() => {
-        // 1. Capture current frame from video
-        let img = tf.browser.fromPixels(video);
-        
-        // 2. Resize to 224x224 (MobileNetV2 input size requirement)
-        img = tf.image.resizeBilinear(img, [224, 224]);
-        
-        // 3. Expand dimensions from [224,224,3] to [1,224,224,3] (Batch processing)
-        const expandedImg = img.expandDims(0);
-        
-        // 4. Preprocess: Scale pixel values to [-1, 1] as expected by MobileNetV2
-        const preprocessedImg = expandedImg.toFloat().div(tf.scalar(127.5)).sub(tf.scalar(1));
-        
-        // 5. Predict using the model
-        return model.predict(preprocessedImg);
+// 3. Upload Mode
+function handleUpload(e) {
+    video.style.display = 'none';
+    preview.style.display = 'block';
+    
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        preview.src = event.target.result;
+        preview.onload = () => predictImage(preview);
+    };
+    reader.readAsDataURL(file);
+}
+
+// 4. Prediction Logic for Static Images
+async function predictImage(imgElement) {
+    status.innerText = "Analyzing...";
+    
+    // Process image: resize, normalize, predict
+    const tensor = tf.tidy(() => {
+        return tf.browser.fromPixels(imgElement)
+            .resizeBilinear([224, 224])
+            .expandDims(0)
+            .toFloat()
+            .div(127.5).sub(1);
     });
+    
+    const pred = await model.predict(tensor).data();
+    tensor.dispose(); // Cleanup memory
 
-    // Extract probabilities from the tensor
-    const probabilities = await prediction.data();
-    prediction.dispose(); // Manual memory cleanup
-
-    // Classes: [0] = WithMask, [1] = WithoutMask (Based on alphabetical folder names)
-    const withMaskProb = probabilities[0];
-    const withoutMaskProb = probabilities[1];
-
-    // Update the UI based on the highest probability
-    if (withMaskProb > withoutMaskProb) {
-        statusText.innerText = `MASK DETECTED (${(withMaskProb * 100).toFixed(1)}%)`;
-        statusText.className = "mask";
-    } else {
-        statusText.innerText = `NO MASK (${(withoutMaskProb * 100).toFixed(1)}%)`;
-        statusText.className = "no-mask";
-    }
-
-    // Request the browser to call predictLoop again for the next video frame
-    requestAnimationFrame(predictLoop);
+    // Probabilities: [0] = WithMask, [1] = WithoutMask
+    status.innerText = pred[0] > pred[1] 
+        ? "✅ MASKER TERDETEKSI" 
+        : "❌ TANPA MASKER";
 }
 
-// Execute the application
+// 5. Prediction Loop for Video
+async function predictVideo() {
+    if (video.style.display === 'none') return; // Stop loop if mode changed
+
+    await predictImage(video);
+    requestAnimationFrame(predictVideo);
+}
+
+// Initial Call
 initModel();

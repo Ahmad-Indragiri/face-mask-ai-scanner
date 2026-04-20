@@ -1,31 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Mask Detection AI</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
-        video { border: 3px solid #333; border-radius: 10px; margin-top: 20px; transform: scaleX(-1); /* Mirror effect */ }
-        #status { font-size: 24px; font-weight: bold; margin-top: 20px; padding: 10px 20px; border-radius: 8px; display: inline-block; }
-        
-        /* Status Colors */
-        .loading { background-color: #ffc107; color: #000; }
-        .mask { background-color: #28a745; color: white; }
-        .no-mask { background-color: #dc3545; color: white; }
-    </style>
-</head>
-<body>
-    <h1>Face Mask AI Scanner</h1>
-    <p>Please allow webcam access. Inference runs entirely in your browser.</p>
-    
-    <div id="status" class="loading">Loading AI Model...</div>
-    <br>
-    <video id="webcam" width="400" height="400" autoplay playsinline muted></video>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mask Detector AI</title>
 
-    <script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+<style>
+:root {
+    --primary: #2563eb;
+    --bg: #0f172a;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.1);
+    --text: #e2e8f0;
+    --success: #22c55e;
+    --danger: #ef4444;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Container */
+.container {
+    width: 100%;
+    max-width: 520px;
+    padding: 25px;
+    border-radius: 20px;
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.header p {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+/* Buttons */
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+/* Preview */
+video, img {
+    width: 100%;
+    border-radius: 12px;
+    margin-top: 15px;
+    display: none;
+    border: 1px solid var(--border);
+}
+
+/* Status */
+#status {
+    text-align: center;
+    font-weight: 500;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+}
+
+.status-success { color: var(--success); }
+.status-danger { color: var(--danger); }
+
+/* Loader */
+.loader {
+    display: none;
+    margin: 10px auto;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1>🤖 Mask Detector AI</h1>
+        <p>Deteksi penggunaan masker secara real-time menggunakan AI</p>
+    </div>
+
+    <div id="status">Siap digunakan</div>
+    <div class="loader" id="loader"></div>
+
+    <div class="btn-group">
+        <button onclick="useWebcam()">Webcam</button>
+        <button onclick="document.getElementById('upload').click()">Upload</button>
+    </div>
+
+    <input type="file" id="upload" accept="image/*" hidden onchange="handleUpload(event)">
+
+    <video id="webcam" autoplay playsinline muted></video>
+    <img id="preview" alt="Preview">
+
+</div>
+
+<script src="script.js"></script>
+
 </body>
 </html>
