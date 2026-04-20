@@ -9,7 +9,7 @@ async function initModel() {
     try {
         status.innerText = "Loading AI Model...";
         // Load the model from our local folder
-        model = await tf.loadLayersModel('./model/model.json');
+        model = await tf.loadLayersModel('/model/model.json');
         status.innerText = "Model Ready. Select camera or upload a photo.";
     } catch (error) {
         console.error("Model loading error:", error);
