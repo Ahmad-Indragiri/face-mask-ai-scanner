@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Mask Detection AI</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        video { border: 3px solid #333; border-radius: 10px; margin-top: 20px; transform: scaleX(-1); /* Mirror effect */ }
+        #status { font-size: 24px; font-weight: bold; margin-top: 20px; padding: 10px 20px; border-radius: 8px; display: inline-block; }
+        
+        /* Status Colors */
+        .loading { background-color: #ffc107; color: #000; }
+        .mask { background-color: #28a745; color: white; }
+        .no-mask { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Face Mask AI Scanner</h1>
+    <p>Please allow webcam access. Inference runs entirely in your browser.</p>
+    
+    <div id="status" class="loading">Loading AI Model...</div>
+    <br>
+    <video id="webcam" width="400" height="400" autoplay playsinline muted></video>
+
+    <script src="script.js"></script>
+</body>
+</html>
