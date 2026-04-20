@@ -55,10 +55,10 @@ function handleUpload(e) {
 }
 
 // 4. Prediction Logic (Graph Model Specific)
+// 4. Prediction Logic (Graph Model Specific)
 async function predictImage(imgElement) {
     status.innerText = "Analyzing...";
     
-    // Preprocessing: Resize ke 224x224 dan normalisasi piksel ke [-1, 1]
     const tensor = tf.tidy(() => {
         return tf.browser.fromPixels(imgElement)
             .resizeBilinear([224, 224])
@@ -68,15 +68,22 @@ async function predictImage(imgElement) {
     });
     
     try {
-        // PERUBAHAN KRUSIAL: Graph Model wajib menggunakan executeAsync
-        const predictionTensor = await model.executeAsync(tensor);
-        const pred = await predictionTensor.data();
+        // PERBAIKAN 1: Gunakan .predict() yang lebih stabil untuk model ini
+        const predictionTensor = model.predict(tensor); 
         
-        // Cleanup memori hasil prediksi agar RAM tidak bocor
-        predictionTensor.dispose();
+        // PERBAIKAN 2: Antisipasi jika Graph Model mereturn Array
+        const tensorData = Array.isArray(predictionTensor) ? predictionTensor[0] : predictionTensor;
+        const pred = await tensorData.data();
+        
+        // Cleanup memori
+        if (Array.isArray(predictionTensor)) {
+            predictionTensor.forEach(t => t.dispose());
+        } else {
+            predictionTensor.dispose();
+        }
 
-        // Evaluasi hasil (Asumsi index 0 = Dengan Masker, 1 = Tanpa Masker)
-        if (pred[0] > pred[1]) {
+        // Evaluasi
+        if (pred[1] > pred[0]) {
             status.innerText = `✅ MASKER TERDETEKSI (${(pred[0] * 100).toFixed(1)}%)`;
             status.style.color = "green";
         } else {
@@ -85,9 +92,11 @@ async function predictImage(imgElement) {
         }
     } catch (error) {
         console.error("Prediction error:", error);
-        status.innerText = "Error analyzing image.";
+        // PERBAIKAN 3: Cetak error langsung ke layar dan matikan kamera agar loop berhenti!
+        status.innerText = "Error: " + error.message; 
+        status.style.color = "red";
+        video.style.display = 'none'; 
     } finally {
-        // Selalu bersihkan tensor input
         tensor.dispose();
     }
 }
