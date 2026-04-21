@@ -27,6 +27,7 @@ A web-based application for detecting face mask usage in **real time** using a w
 | Training       | Kaggle Notebook |
 
 ## 🏗️ Project Structure
+``` 
 .
 ├── index.html          # Antarmuka pengguna (UI)
 ├── script.js           # Logika utama AI & penanganan webcam
