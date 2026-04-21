@@ -5,7 +5,7 @@ A web-based application for detecting face mask usage in **real time** using a w
 ## Live Demo
 
 - **Demo URL:** https://ai-facemask-deteksi.netlify.app/  
-- **Repository:** https://github.com/your-username/mask-detector-ai  
+- **Repository:** https://github.com/Ahmad-Indragiri/face-mask-ai-scannera 
 
 ## Features
 
