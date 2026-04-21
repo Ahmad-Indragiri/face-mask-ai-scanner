@@ -18,7 +18,7 @@ A web-based application for detecting face mask usage in **real time** using a w
 - **Privacy-First Design**  
   All processing happens locally in the browser. No data is sent to servers.
 
-## 🧰 Tech Stack
+## Tech Stack
 | Category        | Technology |
 |----------------|------------|
 | Frontend       | HTML5, CSS3, Vanilla JavaScript |
@@ -26,7 +26,7 @@ A web-based application for detecting face mask usage in **real time** using a w
 | Model          | MobileNetV2 (Transfer Learning) |
 | Training       | Kaggle Notebook |
 
-## 🏗️ Project Structure
+## Project Structure
 ``` 
 .
 ├── index.html          # Antarmuka pengguna (UI)
@@ -35,15 +35,17 @@ A web-based application for detecting face mask usage in **real time** using a w
 │   ├── model.json      # Arsitektur Graph Model
 │   └── group1-shard1of1.bin # Bobot (weights) model
 └── README.md           # Dokumentasi proyek
+```
 
-## ⚙️ How It Works
+
+## How It Works
 1. Loads a pre-trained MobileNetV2 model using TensorFlow.js  
 2. Captures input from webcam or image upload  
 3. Preprocesses the image into tensor format  
 4. Runs inference directly in the browser  
 5. Displays prediction results in real time  
 
-## 🧪 Local Development
+## Local Development
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/your-username/mask-detector-ai.git
