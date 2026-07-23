@@ -163,8 +163,6 @@ async function predictImage(imgElement) {
 
         outputTensor.dispose();
 
-        const maxIndex = scores.indexOf(Math.max(...scores));
-
         const label = LABELS[maxIndex];
 
         const confidence = scores[maxIndex] * 100;
