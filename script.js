@@ -29,7 +29,9 @@ async function useWebcam() {
         video.srcObject = stream;
         
         // Start prediction loop after video is active
-        video.onloadedmetadata = () => {
+        video.onloadedmetadata = async () => {
+            // PERBAIKAN: Memutar video agar frame tidak membeku
+            await video.play();
             predictVideo();
         };
     } catch (error) {
@@ -54,8 +56,6 @@ function handleUpload(e) {
     reader.readAsDataURL(file);
 }
 
-// 4. Prediction Logic (Graph Model Specific)
-// 4. Prediction Logic (Graph Model Specific)
 // 4. Prediction Logic (Graph Model Specific)
 async function predictImage(imgElement) {
     status.innerText = "Analyzing...";
@@ -106,7 +106,11 @@ async function predictImage(imgElement) {
 async function predictVideo() {
     if (video.style.display === 'none') return; // Stop loop if mode changed
 
-    await predictImage(video);
+    // PERBAIKAN: Pastikan video benar-benar memiliki data frame sebelum diprediksi
+    if (video.readyState === 4) {
+        await predictImage(video);
+    }
+    
     requestAnimationFrame(predictVideo);
 }
 
