@@ -150,10 +150,14 @@ async function predictImage(imgElement) {
             ? prediction[0]
             : prediction;
 
-        const scores = await outputTensor.data();
+        const scores = Array.from(await outputTensor.data());
 
-        console.log("Raw Scores:", Array.from(scores));
-        console.log("Labels:", LABELS);
+        console.log("Raw Scores:", scores);
+
+        const maxIndex = scores.indexOf(Math.max(...scores));
+
+        console.log("Predicted Index:", maxIndex);
+        console.log("Predicted Label:", LABELS[maxIndex]);
 
         inputTensor.dispose();
 
