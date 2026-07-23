@@ -152,7 +152,7 @@ async function predictImage(imgElement) {
 
         const scores = await outputTensor.data();
 
-        console.log("Raw Scores:", scores);
+        console.log("Raw Scores:", Array.from(scores));
         console.log("Labels:", LABELS);
 
         inputTensor.dispose();
