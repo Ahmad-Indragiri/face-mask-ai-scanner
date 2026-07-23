@@ -37,7 +37,7 @@ async function initModel() {
 
         status.innerText = "Model Ready.";
 
-    } catch(err){
+    } catch (err) {
 
         console.error(err);
 
@@ -106,6 +106,8 @@ function handleUpload(e) {
         preview.onload = () => {
 
             predictImage(preview);
+            console.log(model.inputs);
+            console.log(model.outputs);
 
         };
 
