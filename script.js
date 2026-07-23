@@ -103,9 +103,8 @@ async function predictImage(imgElement) {
             return tf.browser.fromPixels(imgElement)
                 .resizeBilinear([224, 224])
                 .toFloat()
-                // PERBAIKAN: coba /255 dulu. Kalau model ternyata dilatih dengan
-                // normalisasi MobileNetV2 style (-1 sampai 1), pakai baris yang di-comment di bawah.
-                .div(255.0)
+                .div(127.5)
+                .sub(1)
                 // .div(127.5).sub(1)
                 .expandDims();
         });
