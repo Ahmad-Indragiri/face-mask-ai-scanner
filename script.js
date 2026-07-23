@@ -28,18 +28,18 @@ async function initModel() {
 
         status.innerText = "Loading AI Model...";
 
-        model = await tf.loadGraphModel("./model/model.json");
+        // Tambahkan cache-busting
+        const modelUrl = "./model/model.json?v=" + Date.now();
 
-        status.innerText =
-            "Model Ready. Select camera or upload image.";
+        model = await tf.loadGraphModel(modelUrl);
 
-        console.log("Model Loaded");
+        console.log(model);
 
-    } catch (err) {
+        status.innerText = "Model Ready.";
+
+    } catch(err){
 
         console.error(err);
-
-        status.innerText = "Failed to load model.";
 
     }
 
