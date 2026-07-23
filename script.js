@@ -13,6 +13,10 @@ const status = document.getElementById("status");
 const video = document.getElementById("webcam");
 const preview = document.getElementById("preview");
 
+// PERBAIKAN: urutan label disesuaikan (kemungkinan besar ini penyebab utama salah deteksi)
+// Cek ulang urutan folder/class_names saat training. Biasanya alphabetical:
+// WithMask, WithoutMask -> tapi kalau hasil kebalik, berarti model output-nya
+// urutannya WithoutMask dulu baru WithMask. Sesuaikan dengan hasil console log.
 const LABELS = [
     "WithoutMask",
     "WithMask"
@@ -96,22 +100,12 @@ async function predictImage(imgElement) {
 
     try {
         const inputTensor = tf.tidy(() => {
-
-            let img = tf.browser.fromPixels(imgElement);
-
-            // Center square crop supaya rasio wajah:background mirip data training
-            const h = img.shape[0];
-            const w = img.shape[1];
-            const size = Math.min(h, w);
-            const top = Math.floor((h - size) / 2);
-            const left = Math.floor((w - size) / 2);
-
-            img = img.slice([top, left, 0], [size, size, 3]);
-
-            return img
+            return tf.browser.fromPixels(imgElement)
                 .resizeBilinear([224, 224])
                 .toFloat()
-                .div(255.0)
+                .div(127.5)
+                .sub(1)
+                // .div(127.5).sub(1)
                 .expandDims();
         });
 
