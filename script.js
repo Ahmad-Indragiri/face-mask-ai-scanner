@@ -132,7 +132,7 @@ async function predictImage(imgElement) {
 
             return tf.browser.fromPixels(imgElement)
 
-                .resizeBilinear([224,224])
+                .resizeBilinear([224, 224])
 
                 .toFloat()
 
@@ -152,6 +152,9 @@ async function predictImage(imgElement) {
 
         const scores = await outputTensor.data();
 
+        console.log("Raw Scores:", scores);
+        console.log("Labels:", LABELS);
+
         inputTensor.dispose();
 
         outputTensor.dispose();
@@ -166,45 +169,45 @@ async function predictImage(imgElement) {
 
         const inferenceTime = (end - start).toFixed(1);
 
-        if(label==="WithMask"){
+        if (label === "WithMask") {
 
             status.innerHTML =
 
-            `✅ MASK DETECTED<br>
+                `MASK DETECTED<br>
             Confidence : ${confidence.toFixed(2)} %<br>
             Inference : ${inferenceTime} ms`;
 
-            status.style.color="green";
+            status.style.color = "green";
 
         }
 
-        else{
+        else {
 
             status.innerHTML =
 
-            `❌ NO MASK<br>
+                `NO MASK<br>
             Confidence : ${confidence.toFixed(2)} %<br>
             Inference : ${inferenceTime} ms`;
 
-            status.style.color="red";
+            status.style.color = "red";
 
         }
 
     }
 
-    catch(err){
+    catch (err) {
 
         console.error(err);
 
         status.innerText = err.message;
 
-        status.style.color="red";
+        status.style.color = "red";
 
     }
 
-    finally{
+    finally {
 
-        isPredicting=false;
+        isPredicting = false;
 
     }
 
@@ -213,26 +216,26 @@ async function predictImage(imgElement) {
 // ----------------------------
 // Video Loop
 // ----------------------------
-async function predictVideo(){
+async function predictVideo() {
 
-    if(video.style.display==="none"){
+    if (video.style.display === "none") {
 
         return;
 
     }
 
-    if(video.readyState===4){
+    if (video.readyState === 4) {
 
         await predictImage(video);
 
     }
 
     // sekitar 10 FPS
-    setTimeout(()=>{
+    setTimeout(() => {
 
         requestAnimationFrame(predictVideo);
 
-    },100);
+    }, 100);
 
 }
 
