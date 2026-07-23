@@ -15,34 +15,56 @@ canvas.style.position = "absolute";
 canvas.style.pointerEvents = "none";
 document.body.appendChild(canvas);
 
-const LABELS = [
-    "WithoutMask",
-    "WithMask"
-];
+const LABELS = ["WithoutMask", "WithMask"];
 
 // ----------------------------
-// Load Models (dipisah agar tahu mana yang gagal)
+// Helper: load script secara dinamis dan tunggu sampai selesai
+// ----------------------------
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("Gagal load: " + src));
+        document.head.appendChild(s);
+    });
+}
+
+// ----------------------------
+// Load Models (urutan dijamin lewat await)
 // ----------------------------
 async function initModel() {
 
     try {
-        status.innerText = "Loading Mask Model...";
-        const modelUrl = "./model/model.json?v=" + Date.now();
-        model = await tf.loadGraphModel(modelUrl);
-        console.log("Mask model loaded:", model);
+        status.innerText = "Loading TensorFlow.js...";
+        await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0");
+        console.log("tf loaded, version:", tf.version.tfjs);
     } catch (err) {
-        console.error("Mask model failed:", err);
-        status.innerText = "Failed to load mask model. Check console.";
+        console.error(err);
+        status.innerText = "Failed to load TensorFlow.js.";
         return;
     }
 
     try {
         status.innerText = "Loading Face Detector...";
+        await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.js");
+        console.log("blazeface script loaded, typeof blazeface:", typeof blazeface);
         faceModel = await blazeface.load();
-        console.log("BlazeFace loaded:", faceModel);
+        console.log("BlazeFace model ready");
     } catch (err) {
         console.error("BlazeFace failed:", err);
-        status.innerText = "Failed to load face detector. Check console.";
+        status.innerText = "Failed to load face detector.";
+        return;
+    }
+
+    try {
+        status.innerText = "Loading Mask Model...";
+        const modelUrl = "./model/model.json?v=" + Date.now();
+        model = await tf.loadGraphModel(modelUrl);
+        console.log("Mask model loaded");
+    } catch (err) {
+        console.error("Mask model failed:", err);
+        status.innerText = "Failed to load mask model.";
         return;
     }
 
@@ -50,7 +72,7 @@ async function initModel() {
 }
 
 // ----------------------------
-// Sync canvas overlay ke posisi & ukuran elemen sumber
+// Sync canvas overlay
 // ----------------------------
 function syncCanvas(sourceEl) {
     const rect = sourceEl.getBoundingClientRect();
@@ -73,9 +95,7 @@ async function useWebcam() {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "user" }
         });
-
         video.srcObject = stream;
-
         video.onloadedmetadata = async () => {
             await video.play();
             predictVideo();
@@ -97,15 +117,12 @@ function handleUpload(e) {
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.onload = event => {
         preview.src = event.target.result;
-
         preview.onload = () => {
             predictImage(preview);
         };
     };
-
     reader.readAsDataURL(file);
 }
 
@@ -119,7 +136,6 @@ async function predictImage(imgElement) {
     const start = performance.now();
 
     try {
-
         if (!model || !faceModel) {
             status.innerText = "Model belum siap.";
             isPredicting = false;
@@ -158,12 +174,10 @@ async function predictImage(imgElement) {
 
         const inputTensor = tf.tidy(() => {
             const img = tf.browser.fromPixels(imgElement);
-
             const cropped = img.slice(
                 [Math.round(cropY), Math.round(cropX), 0],
                 [Math.round(cropH), Math.round(cropW), 3]
             );
-
             return cropped
                 .resizeBilinear([224, 224])
                 .toFloat()
@@ -191,17 +205,11 @@ async function predictImage(imgElement) {
         ctx.lineWidth = 3;
 
         if (label === "WithMask") {
-            status.innerHTML =
-                `MASK DETECTED<br>
-                Confidence : ${confidence.toFixed(2)} %<br>
-                Inference : ${inferenceTime} ms`;
+            status.innerHTML = `MASK DETECTED<br>Confidence : ${confidence.toFixed(2)} %<br>Inference : ${inferenceTime} ms`;
             status.style.color = "green";
             ctx.strokeStyle = "lime";
         } else {
-            status.innerHTML =
-                `NO MASK<br>
-                Confidence : ${confidence.toFixed(2)} %<br>
-                Inference : ${inferenceTime} ms`;
+            status.innerHTML = `NO MASK<br>Confidence : ${confidence.toFixed(2)} %<br>Inference : ${inferenceTime} ms`;
             status.style.color = "red";
             ctx.strokeStyle = "red";
         }
@@ -221,14 +229,10 @@ async function predictImage(imgElement) {
 // Video Loop
 // ----------------------------
 async function predictVideo() {
-    if (video.style.display === "none") {
-        return;
-    }
-
+    if (video.style.display === "none") return;
     if (video.readyState === 4) {
         await predictImage(video);
     }
-
     setTimeout(() => {
         requestAnimationFrame(predictVideo);
     }, 100);
