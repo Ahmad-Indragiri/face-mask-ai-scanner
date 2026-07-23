@@ -1,17 +1,19 @@
 // ======================================================
-// Face Mask Detection V2
-// TensorFlow.js Graph Model
+// Face Mask Detection V2 + Face Crop Box (BlazeFace)
 // ======================================================
 
-// ----------------------------
-// Global Variables
-// ----------------------------
 let model;
+let faceModel;
 let isPredicting = false;
 
 const status = document.getElementById("status");
 const video = document.getElementById("webcam");
 const preview = document.getElementById("preview");
+
+const canvas = document.createElement("canvas");
+canvas.style.position = "absolute";
+canvas.style.pointerEvents = "none";
+document.body.appendChild(canvas);
 
 const LABELS = [
     "WithoutMask",
@@ -19,21 +21,45 @@ const LABELS = [
 ];
 
 // ----------------------------
-// Load Model
+// Load Models (dipisah agar tahu mana yang gagal)
 // ----------------------------
 async function initModel() {
-    try {
-        status.innerText = "Loading AI Model...";
 
+    try {
+        status.innerText = "Loading Mask Model...";
         const modelUrl = "./model/model.json?v=" + Date.now();
         model = await tf.loadGraphModel(modelUrl);
-
-        console.log(model);
-        status.innerText = "Model Ready.";
+        console.log("Mask model loaded:", model);
     } catch (err) {
-        console.error(err);
-        status.innerText = "Failed to load model.";
+        console.error("Mask model failed:", err);
+        status.innerText = "Failed to load mask model. Check console.";
+        return;
     }
+
+    try {
+        status.innerText = "Loading Face Detector...";
+        faceModel = await blazeface.load();
+        console.log("BlazeFace loaded:", faceModel);
+    } catch (err) {
+        console.error("BlazeFace failed:", err);
+        status.innerText = "Failed to load face detector. Check console.";
+        return;
+    }
+
+    status.innerText = "Model Ready.";
+}
+
+// ----------------------------
+// Sync canvas overlay ke posisi & ukuran elemen sumber
+// ----------------------------
+function syncCanvas(sourceEl) {
+    const rect = sourceEl.getBoundingClientRect();
+    canvas.width = sourceEl.videoWidth || sourceEl.naturalWidth || rect.width;
+    canvas.height = sourceEl.videoHeight || sourceEl.naturalHeight || rect.height;
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
+    canvas.style.left = rect.left + window.scrollX + "px";
+    canvas.style.top = rect.top + window.scrollY + "px";
 }
 
 // ----------------------------
@@ -77,8 +103,6 @@ function handleUpload(e) {
 
         preview.onload = () => {
             predictImage(preview);
-            console.log(model.inputs);
-            console.log(model.outputs);
         };
     };
 
@@ -86,7 +110,7 @@ function handleUpload(e) {
 }
 
 // ----------------------------
-// Prediction
+// Deteksi wajah, gambar box, crop, lalu prediksi masker
 // ----------------------------
 async function predictImage(imgElement) {
     if (isPredicting) return;
@@ -95,20 +119,52 @@ async function predictImage(imgElement) {
     const start = performance.now();
 
     try {
+
+        if (!model || !faceModel) {
+            status.innerText = "Model belum siap.";
+            isPredicting = false;
+            return;
+        }
+
+        syncCanvas(imgElement);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const faces = await faceModel.estimateFaces(imgElement, false);
+
+        if (faces.length === 0) {
+            status.innerText = "No face detected.";
+            isPredicting = false;
+            return;
+        }
+
+        const face = faces[0];
+        const [x1, y1] = face.topLeft;
+        const [x2, y2] = face.bottomRight;
+
+        const padding = 0.3;
+        const boxW = x2 - x1;
+        const boxH = y2 - y1;
+
+        let cropX = Math.max(0, x1 - boxW * padding);
+        let cropY = Math.max(0, y1 - boxH * padding);
+        let cropW = boxW * (1 + 2 * padding);
+        let cropH = boxH * (1 + 2 * padding);
+
+        const imgW = imgElement.videoWidth || imgElement.naturalWidth || imgElement.width;
+        const imgH = imgElement.videoHeight || imgElement.naturalHeight || imgElement.height;
+        cropW = Math.min(cropW, imgW - cropX);
+        cropH = Math.min(cropH, imgH - cropY);
+
         const inputTensor = tf.tidy(() => {
+            const img = tf.browser.fromPixels(imgElement);
 
-            let img = tf.browser.fromPixels(imgElement);
+            const cropped = img.slice(
+                [Math.round(cropY), Math.round(cropX), 0],
+                [Math.round(cropH), Math.round(cropW), 3]
+            );
 
-            // Center square crop supaya rasio wajah:background mirip data training
-            const h = img.shape[0];
-            const w = img.shape[1];
-            const size = Math.min(h, w);
-            const top = Math.floor((h - size) / 2);
-            const left = Math.floor((w - size) / 2);
-
-            img = img.slice([top, left, 0], [size, size, 3]);
-
-            return img
+            return cropped
                 .resizeBilinear([224, 224])
                 .toFloat()
                 .div(255.0)
@@ -116,28 +172,23 @@ async function predictImage(imgElement) {
         });
 
         const prediction = model.predict(inputTensor);
-
-        const outputTensor = Array.isArray(prediction)
-            ? prediction[0]
-            : prediction;
-
+        const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
         const scores = Array.from(await outputTensor.data());
 
         console.log("Raw Scores:", scores);
 
         const maxIndex = scores.indexOf(Math.max(...scores));
-
-        console.log("Predicted Index:", maxIndex);
-        console.log("Predicted Label:", LABELS[maxIndex]);
+        const label = LABELS[maxIndex];
+        const confidence = scores[maxIndex] * 100;
 
         inputTensor.dispose();
         outputTensor.dispose();
 
-        const label = LABELS[maxIndex];
-        const confidence = scores[maxIndex] * 100;
-
         const end = performance.now();
         const inferenceTime = (end - start).toFixed(1);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 3;
 
         if (label === "WithMask") {
             status.innerHTML =
@@ -145,13 +196,17 @@ async function predictImage(imgElement) {
                 Confidence : ${confidence.toFixed(2)} %<br>
                 Inference : ${inferenceTime} ms`;
             status.style.color = "green";
+            ctx.strokeStyle = "lime";
         } else {
             status.innerHTML =
                 `NO MASK<br>
                 Confidence : ${confidence.toFixed(2)} %<br>
                 Inference : ${inferenceTime} ms`;
             status.style.color = "red";
+            ctx.strokeStyle = "red";
         }
+
+        ctx.strokeRect(cropX, cropY, cropW, cropH);
 
     } catch (err) {
         console.error(err);
