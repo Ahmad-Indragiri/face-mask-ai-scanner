@@ -13,7 +13,10 @@ const status = document.getElementById("status");
 const video = document.getElementById("webcam");
 const preview = document.getElementById("preview");
 
-// Urutan label sudah ditukar (WithoutMask di indeks 0, WithMask di indeks 1)
+// PERBAIKAN: urutan label disesuaikan (kemungkinan besar ini penyebab utama salah deteksi)
+// Cek ulang urutan folder/class_names saat training. Biasanya alphabetical:
+// WithMask, WithoutMask -> tapi kalau hasil kebalik, berarti model output-nya
+// urutannya WithoutMask dulu baru WithMask. Sesuaikan dengan hasil console log.
 const LABELS = [
     "WithoutMask",
     "WithMask"
@@ -26,15 +29,14 @@ async function initModel() {
     try {
         status.innerText = "Loading AI Model...";
 
-        // Tambahkan cache-busting
         const modelUrl = "./model/model.json?v=" + Date.now();
-
         model = await tf.loadGraphModel(modelUrl);
-        console.log(model);
 
+        console.log(model);
         status.innerText = "Model Ready.";
     } catch (err) {
         console.error(err);
+        status.innerText = "Failed to load model.";
     }
 }
 
@@ -47,12 +49,11 @@ async function useWebcam() {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "user"
-            }
+            video: { facingMode: "user" }
         });
 
         video.srcObject = stream;
+
         video.onloadedmetadata = async () => {
             await video.play();
             predictVideo();
@@ -74,8 +75,10 @@ function handleUpload(e) {
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = event => {
         preview.src = event.target.result;
+
         preview.onload = () => {
             predictImage(preview);
             console.log(model.inputs);
@@ -100,8 +103,10 @@ async function predictImage(imgElement) {
             return tf.browser.fromPixels(imgElement)
                 .resizeBilinear([224, 224])
                 .toFloat()
-                .div(127.5) // Normalisasi standar (rentang -1 hingga 1)
-                .sub(1)
+                // PERBAIKAN: coba /255 dulu. Kalau model ternyata dilatih dengan
+                // normalisasi MobileNetV2 style (-1 sampai 1), pakai baris yang di-comment di bawah.
+                .div(255.0)
+                // .div(127.5).sub(1)
                 .expandDims();
         });
 
@@ -112,6 +117,7 @@ async function predictImage(imgElement) {
             : prediction;
 
         const scores = Array.from(await outputTensor.data());
+
         console.log("Raw Scores:", scores);
 
         const maxIndex = scores.indexOf(Math.max(...scores));
@@ -124,31 +130,29 @@ async function predictImage(imgElement) {
 
         const label = LABELS[maxIndex];
         const confidence = scores[maxIndex] * 100;
+
         const end = performance.now();
         const inferenceTime = (end - start).toFixed(1);
 
         if (label === "WithMask") {
             status.innerHTML =
                 `MASK DETECTED<br>
-            Confidence : ${confidence.toFixed(2)} %<br>
-            Inference : ${inferenceTime} ms`;
+                Confidence : ${confidence.toFixed(2)} %<br>
+                Inference : ${inferenceTime} ms`;
             status.style.color = "green";
-        }
-        else {
+        } else {
             status.innerHTML =
                 `NO MASK<br>
-            Confidence : ${confidence.toFixed(2)} %<br>
-            Inference : ${inferenceTime} ms`;
+                Confidence : ${confidence.toFixed(2)} %<br>
+                Inference : ${inferenceTime} ms`;
             status.style.color = "red";
         }
 
-    }
-    catch (err) {
+    } catch (err) {
         console.error(err);
         status.innerText = err.message;
         status.style.color = "red";
-    }
-    finally {
+    } finally {
         isPredicting = false;
     }
 }
@@ -165,7 +169,6 @@ async function predictVideo() {
         await predictImage(video);
     }
 
-    // sekitar 10 FPS
     setTimeout(() => {
         requestAnimationFrame(predictVideo);
     }, 100);
