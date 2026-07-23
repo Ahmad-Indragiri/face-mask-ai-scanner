@@ -1,6 +1,8 @@
 // ======================================================
 // Face Mask Detection V2 + Face Crop Box (BlazeFace)
 // ======================================================
+import * as tf from '@tensorflow/tfjs';
+import * as blazeface from '@tensorflow-models/blazeface';
 
 let model;
 let faceModel;
