@@ -30,7 +30,7 @@ async function useWebcam() {
         
         // Start prediction loop after video is active
         video.onloadedmetadata = async () => {
-            // PERBAIKAN: Memutar video agar frame tidak membeku
+            // Memutar video agar frame tidak membeku
             await video.play();
             predictVideo();
         };
@@ -58,7 +58,11 @@ function handleUpload(e) {
 
 // 4. Prediction Logic (Graph Model Specific)
 async function predictImage(imgElement) {
-    status.innerText = "Analyzing...";
+    // Hanya tampilkan teks "Analyzing" jika input berasal dari upload foto
+    if (imgElement.id === 'preview') {
+        status.innerText = "Analyzing...";
+        status.style.color = "#94a3b8"; // Sesuaikan dengan warna teks default web Anda
+    }
     
     const tensor = tf.tidy(() => {
         return tf.browser.fromPixels(imgElement)
@@ -73,17 +77,15 @@ async function predictImage(imgElement) {
         
         const tensorData = Array.isArray(predictionTensor) ? predictionTensor[0] : predictionTensor;
         const pred = await tensorData.data();
-
-        console.log(`[DEBUG AI] Kelas 0 (Tanpa Masker): ${pred[0].toFixed(4)} | Kelas 1 (Masker): ${pred[1].toFixed(4)}`);
         
-        // Cleanup memori
+        // Cleanup memori tensor prediksi
         if (Array.isArray(predictionTensor)) {
             predictionTensor.forEach(t => t.dispose());
         } else {
             predictionTensor.dispose();
         }
 
-        // Evaluasi Final yang Benar
+        // Evaluasi Final yang Benar (pred[1] = Masker, pred[0] = Tanpa Masker)
         if (pred[1] > pred[0]) {
             status.innerText = `✅ MASKER TERDETEKSI (${(pred[1] * 100).toFixed(1)}%)`;
             status.style.color = "green";
@@ -98,6 +100,7 @@ async function predictImage(imgElement) {
         status.style.color = "red";
         video.style.display = 'none'; 
     } finally {
+        // Membersihkan memori tensor input
         tensor.dispose();
     }
 }
@@ -106,11 +109,12 @@ async function predictImage(imgElement) {
 async function predictVideo() {
     if (video.style.display === 'none') return; // Stop loop if mode changed
 
-    // PERBAIKAN: Pastikan video benar-benar memiliki data frame sebelum diprediksi
+    // Pastikan video benar-benar memiliki data frame sebelum diprediksi
     if (video.readyState === 4) {
         await predictImage(video);
     }
     
+    // Looping kamera secara real-time
     requestAnimationFrame(predictVideo);
 }
 
